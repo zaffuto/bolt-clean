@@ -2,33 +2,51 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { createEcoCupon } from '@/lib/supabase/db';
 
 interface EcoCuponGeneratorProps {
-  productId: string;
+  productId: number;
   onGenerate?: (code: string) => void;
 }
 
 export function EcoCuponGenerator({ productId, onGenerate }: EcoCuponGeneratorProps) {
   const [cuponCode, setCuponCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const generateCupon = async () => {
-    // Generar un código único
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const code = `ECO-${productId.slice(0, 6)}-${timestamp}-${randomStr}`;
+    setIsLoading(true);
+    setError('');
     
-    setCuponCode(code);
-    onGenerate?.(code);
+    try {
+      const cupon = await createEcoCupon(productId);
+      if (cupon) {
+        setCuponCode(cupon.code);
+        onGenerate?.(cupon.code);
+      } else {
+        setError('Error al generar el cupón');
+      }
+    } catch (err) {
+      setError('Error al generar el cupón');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="space-y-4">
       <button
         onClick={generateCupon}
-        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+        disabled={isLoading}
+        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-green-400"
       >
-        Generar EcoCupón
+        {isLoading ? 'Generando...' : 'Generar EcoCupón'}
       </button>
+
+      {error && (
+        <p className="text-red-500 text-sm">{error}</p>
+      )}
 
       {cuponCode && (
         <div className="p-4 border rounded-lg space-y-4">
